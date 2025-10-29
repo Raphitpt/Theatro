@@ -2,155 +2,439 @@ openapi: 3.0.0
 info:
     title: Theatro
     version: 1.0.0
-    description: ''
+    description: 'API de gestion des événements (spectacles et ateliers) avec système d''authentification JWT et gestion des rôles'
 servers:
     - url: '{{baseUrl}}'
-    - url: localhost
+    - url: http://localhost:3000
+
+components:
+    securitySchemes:
+        BearerAuth:
+            type: http
+            scheme: bearer
+            bearerFormat: JWT
+            description: 'Token JWT obtenu via /login (valide 24h). Format: Authorization: Bearer <token>'
+
+    responses:
+        Unauthorized:
+            description: 'Token manquant ou invalide'
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            message:
+                                type: string
+                                example: 'Unauthorized. No token provided.'
+
+        Forbidden:
+            description: 'Droits insuffisants - Rôle Administrator ou Manager requis'
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            message:
+                                type: string
+                                example: 'Accès refusé. Droits administrateur ou manager requis.'
+
+        ForbiddenAdmin:
+            description: 'Droits insuffisants - Rôle Administrator requis'
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            message:
+                                type: string
+                                example: 'Accès refusé. Droits administrateur requis.'
+
 paths:
     /login:
         post:
             summary: Login
+            description: 'Authentifie un utilisateur et retourne un token JWT valide 24h'
             tags:
                 - Auth
-            responses: {}
             requestBody:
+                required: true
                 content:
                     application/json:
                         schema:
                             type: object
+                            required:
+                                - mail
+                                - password
                             properties:
                                 mail:
                                     type: string
                                     format: email
+                                    example: 'user@example.com'
                                 password:
                                     type: string
+                                    format: password
+                                    example: 'SecureP@ssw0rd'
+            responses:
+                '200':
+                    description: 'Authentification réussie'
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    token:
+                                        type: string
+                                        description: 'JWT token valide 24h'
+                                    user:
+                                        type: object
+                                        properties:
+                                            userId:
+                                                type: string
+                                            role:
+                                                type: string
+                                                enum: [Member, Manager, Administrator]
+                '401':
+                    description: 'Identifiants invalides'
+                '400':
+                    description: 'Requête invalide'
+
     /register:
         post:
-            summary: Register
+            summary: 'Register new user'
+            description: '🔒 **ADMIN ONLY** - Crée un nouveau compte utilisateur (Member ou Manager) et envoie un email d''invitation'
             tags:
                 - Auth
-            responses: {}
-    /choose-password:
-        patch:
-            summary: Choose Password
-            tags:
-                - Auth
-            parameters:
-                - name: deprecated
-                  in: query
-                  required: false
-                  schema:
-                      type: boolean
-            responses: {}
-    /event/show:
-        post:
-            summary: Create show
-            tags:
-                - Event
-                - Show
-            responses: {}
+            security:
+                - BearerAuth: []
             requestBody:
+                required: true
                 content:
                     application/json:
                         schema:
                             type: object
+                            required:
+                                - mail
+                                - firstName
+                                - lastName
+                            properties:
+                                mail:
+                                    type: string
+                                    format: email
+                                    example: 'newuser@example.com'
+                                firstName:
+                                    type: string
+                                    example: 'Jean'
+                                lastName:
+                                    type: string
+                                    example: 'Dupont'
+                                role:
+                                    type: string
+                                    enum: [Member, Manager]
+                                    default: Member
+                                    description: 'Rôle du nouvel utilisateur'
+            responses:
+                '201':
+                    description: 'Utilisateur créé avec succès'
+                '400':
+                    description: 'Email déjà utilisé ou données invalides'
+                '401':
+                    $ref: '#/components/responses/Unauthorized'
+                '403':
+                    $ref: '#/components/responses/ForbiddenAdmin'
+
+    /choose-password:
+        patch:
+            summary: 'Choose Password'
+            description: 'Permet à un nouvel utilisateur de définir son mot de passe via le lien reçu par email'
+            tags:
+                - Auth
+            parameters:
+                - name: token
+                  in: query
+                  required: true
+                  description: 'Token de réinitialisation reçu par email'
+                  schema:
+                      type: string
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required:
+                                - password
+                            properties:
+                                password:
+                                    type: string
+                                    format: password
+                                    minLength: 8
+                                    example: 'SecureP@ssw0rd'
+            responses:
+                '200':
+                    description: 'Mot de passe défini avec succès'
+                '400':
+                    description: 'Token invalide ou expiré'
+                '404':
+                    description: 'Utilisateur non trouvé'
+    /event/show:
+        post:
+            summary: 'Create show'
+            description: '🔒 **MANAGER/ADMIN ONLY** - Crée un nouveau spectacle'
+            tags:
+                - Event
+                - Show
+            security:
+                - BearerAuth: []
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required:
+                                - name
+                                - dateTimeStart
+                                - dateTimeEnd
+                                - location
+                                - memberMax
                             properties:
                                 name:
                                     type: string
+                                    example: 'Spectacle de fin d''année'
                                 dateTimeStart:
                                     type: string
+                                    format: date-time
+                                    example: '2025-12-15T20:00:00Z'
                                 dateTimeEnd:
                                     type: string
+                                    format: date-time
+                                    example: '2025-12-15T22:30:00Z'
                                 location:
                                     type: string
+                                    example: 'Théâtre Municipal'
                                 memberMax:
                                     type: integer
+                                    minimum: 1
+                                    example: 50
                                 roles:
                                     type: array
                                     items:
                                         type: string
-    /show/6901ded3a9fc93e47dd0998d/apply:
+                                    example: ['Comédien', 'Technicien', 'Régisseur']
+            responses:
+                '201':
+                    description: 'Spectacle créé avec succès'
+                '400':
+                    description: 'Données invalides'
+                '401':
+                    $ref: '#/components/responses/Unauthorized'
+                '403':
+                    $ref: '#/components/responses/Forbidden'
+
+    /show/{showId}/apply:
         post:
-            summary: Apply to show
+            summary: 'Apply to show'
+            description: '🔓 **AUTHENTICATED** - Postuler à un spectacle'
             tags:
                 - Event
                 - Show
-            responses: {}
-    /show/{showId}:
-        get:
-            summary: Get show
-            tags:
-                - Event
-                - Show
-            responses: {}
-        parameters:
-            - name: showId
-              in: path
-              required: true
-              schema:
-                  deprecated: false
-    /show/6901ded3a9fc93e47dd0998d/applications:
-        get:
-            summary: List applications for show
-            tags:
-                - Event
-                - Application
-            responses: {}
-    /application/{applicationId}/process:
-        patch:
-            summary: Update application of member
-            tags:
-                - Event
-                - Application
-            responses: {}
+            security:
+                - BearerAuth: []
+            parameters:
+                - name: showId
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                  example: '6901ded3a9fc93e47dd0998d'
             requestBody:
+                required: true
                 content:
                     application/json:
                         schema:
                             type: object
+                            properties:
+                                preferredRoles:
+                                    type: array
+                                    items:
+                                        type: string
+                                    example: ['Comédien']
+                                message:
+                                    type: string
+                                    example: 'Je serais ravi de participer'
+            responses:
+                '201':
+                    description: 'Candidature envoyée'
+                '400':
+                    description: 'Candidature déjà existante ou données invalides'
+                '401':
+                    $ref: '#/components/responses/Unauthorized'
+                '404':
+                    description: 'Spectacle non trouvé'
+
+    /show/{showId}:
+        get:
+            summary: 'Get show'
+            description: '🔒 **MANAGER/ADMIN ONLY** - Récupérer les détails d''un spectacle'
+            tags:
+                - Event
+                - Show
+            security:
+                - BearerAuth: []
+            parameters:
+                - name: showId
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                  example: '6901ded3a9fc93e47dd0998d'
+            responses:
+                '200':
+                    description: 'Détails du spectacle'
+                '401':
+                    $ref: '#/components/responses/Unauthorized'
+                '403':
+                    $ref: '#/components/responses/Forbidden'
+                '404':
+                    description: 'Spectacle non trouvé'
+
+    /show/{showId}/applications:
+        get:
+            summary: 'List applications for show'
+            description: '🔒 **MANAGER/ADMIN ONLY** - Liste toutes les candidatures pour un spectacle'
+            tags:
+                - Event
+                - Application
+            security:
+                - BearerAuth: []
+            parameters:
+                - name: showId
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                  example: '6901ded3a9fc93e47dd0998d'
+            responses:
+                '200':
+                    description: 'Liste des candidatures'
+                '401':
+                    $ref: '#/components/responses/Unauthorized'
+                '403':
+                    $ref: '#/components/responses/Forbidden'
+                '404':
+                    description: 'Spectacle non trouvé'
+    /application/{applicationId}/process:
+        patch:
+            summary: 'Update application status'
+            description: '🔒 **MANAGER/ADMIN ONLY** - Accepter ou refuser une candidature'
+            tags:
+                - Event
+                - Application
+            security:
+                - BearerAuth: []
+            parameters:
+                - name: applicationId
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                  example: '6901ded3a9fc93e47dd0998d'
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required:
+                                - status
                             properties:
                                 status:
                                     type: string
+                                    enum: ['accepted', 'refused', 'pending']
+                                    example: 'accepted'
                                 notes:
                                     type: string
-        parameters:
-            - name: applicationId
-              in: path
-              required: true
-              schema:
-                  deprecated: false
+                                    example: 'Profil intéressant'
+            responses:
+                '200':
+                    description: 'Candidature mise à jour'
+                '400':
+                    description: 'Statut invalide'
+                '401':
+                    $ref: '#/components/responses/Unauthorized'
+                '403':
+                    $ref: '#/components/responses/Forbidden'
+                '404':
+                    description: 'Candidature non trouvée'
+
     /event/workshop:
         post:
-            summary: Create workshop
+            summary: 'Create workshop'
+            description: '🔒 **MANAGER/ADMIN ONLY** - Crée un nouvel atelier'
             tags:
                 - Event
                 - Workshop
-            responses: {}
+            security:
+                - BearerAuth: []
             requestBody:
+                required: true
                 content:
                     application/json:
                         schema:
                             type: object
+                            required:
+                                - name
+                                - dateTimeStart
+                                - dateTimeEnd
+                                - location
+                                - memberMax
                             properties:
                                 name:
                                     type: string
+                                    example: 'Atelier impro débutants'
                                 dateTimeStart:
                                     type: string
-                                    format: style
+                                    format: date-time
+                                    example: '2025-11-20T18:00:00Z'
                                 dateTimeEnd:
                                     type: string
+                                    format: date-time
+                                    example: '2025-11-20T20:00:00Z'
                                 location:
                                     type: string
+                                    example: 'Salle de répétition B'
                                 memberMax:
                                     type: integer
+                                    minimum: 1
+                                    example: 15
+            responses:
+                '201':
+                    description: 'Atelier créé avec succès'
+                '400':
+                    description: 'Données invalides'
+                '401':
+                    $ref: '#/components/responses/Unauthorized'
+                '403':
+                    $ref: '#/components/responses/Forbidden'
+
     /workshop/{workshopId}/apply:
         post:
-            summary: Apply to workshop
+            summary: 'Apply to workshop'
+            description: '🔓 **AUTHENTICATED** - S''inscrire à un atelier'
             tags:
                 - Event
                 - Workshop
-            responses: {}
+            security:
+                - BearerAuth: []
+            parameters:
+                - name: workshopId
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                  example: '6901ded3a9fc93e47dd0998d'
             requestBody:
+                required: true
                 content:
                     application/json:
                         schema:
@@ -158,70 +442,166 @@ paths:
                             properties:
                                 availability:
                                     type: string
-        parameters:
-            - name: workshopId
-              in: path
-              required: true
-              schema:
-                  deprecated: false
+                                    example: 'Disponible tous les jeudis soir'
+                                experience:
+                                    type: string
+                                    example: '2 ans de théâtre amateur'
+            responses:
+                '201':
+                    description: 'Inscription confirmée'
+                '400':
+                    description: 'Inscription déjà existante ou atelier complet'
+                '401':
+                    $ref: '#/components/responses/Unauthorized'
+                '404':
+                    description: 'Atelier non trouvé'
+
     /workshop/{workshopId}:
         get:
-            summary: Get workshop
+            summary: 'Get workshop'
+            description: '🔓 **AUTHENTICATED** - Récupérer les détails d''un atelier'
             tags:
                 - Event
                 - Workshop
-            responses: {}
-        parameters:
-            - name: workshopId
-              in: path
-              required: true
-              schema:
-                  deprecated: false
-    /:
-        post:
-            summary: Create workshop
-            tags:
-                - Event
-                - Workshop
-            responses: {}
+            security:
+                - BearerAuth: []
+            parameters:
+                - name: workshopId
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                  example: '6901ded3a9fc93e47dd0998d'
+            responses:
+                '200':
+                    description: 'Détails de l''atelier'
+                '401':
+                    $ref: '#/components/responses/Unauthorized'
+                '404':
+                    description: 'Atelier non trouvé'
     /event:
         get:
-            summary: Get all events
+            summary: 'Get all events'
+            description: '🔓 **AUTHENTICATED** - Liste tous les événements (shows et workshops)'
             tags:
                 - Event
+            security:
+                - BearerAuth: []
             parameters:
                 - name: type
                   in: query
                   required: false
+                  description: 'Filtrer par type d''événement'
                   schema:
                       type: string
-            responses: {}
+                      enum: ['show', 'workshop']
+                  example: 'show'
+            responses:
+                '200':
+                    description: 'Liste des événements'
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    type: object
+                                    properties:
+                                        _id:
+                                            type: string
+                                        name:
+                                            type: string
+                                        type:
+                                            type: string
+                                            enum: ['show', 'workshop']
+                                        dateTimeStart:
+                                            type: string
+                                            format: date-time
+                                        dateTimeEnd:
+                                            type: string
+                                            format: date-time
+                                        location:
+                                            type: string
+                                        memberMax:
+                                            type: integer
+                '401':
+                    $ref: '#/components/responses/Unauthorized'
+
     /event/{eventType}/{eventId}/followup:
         get:
-            summary: Follow up event
+            summary: 'Follow up event'
+            description: '🔒 **MANAGER/ADMIN ONLY** - Récapitulatif d''un événement (participants, statuts)'
             tags:
                 - Event
-            responses: {}
-        parameters:
-            - name: eventType
-              in: path
-              required: true
-              schema:
-                  deprecated: false
-            - name: eventId
-              in: path
-              required: true
-              schema:
-                  deprecated: false
+            security:
+                - BearerAuth: []
+            parameters:
+                - name: eventType
+                  in: path
+                  required: true
+                  description: 'Type d''événement'
+                  schema:
+                      type: string
+                      enum: ['show', 'workshop']
+                  example: 'show'
+                - name: eventId
+                  in: path
+                  required: true
+                  description: 'ID de l''événement'
+                  schema:
+                      type: string
+                  example: '6901ded3a9fc93e47dd0998d'
+            responses:
+                '200':
+                    description: 'Récapitulatif de l''événement'
+                '401':
+                    $ref: '#/components/responses/Unauthorized'
+                '403':
+                    $ref: '#/components/responses/Forbidden'
+                '404':
+                    description: 'Événement non trouvé'
+
     /member/{memberId}:
         get:
-            summary: Get member
+            summary: 'Get member'
+            description: '🔒 **MANAGER/ADMIN ONLY** - Récupérer les informations d''un membre'
             tags:
                 - Member
-            responses: {}
-        parameters:
-            - name: memberId
-              in: path
-              required: true
-              schema:
-                  deprecated: false
+            security:
+                - BearerAuth: []
+            parameters:
+                - name: memberId
+                  in: path
+                  required: true
+                  description: 'ID du membre'
+                  schema:
+                      type: string
+                  example: '6901ded3a9fc93e47dd0998d'
+            responses:
+                '200':
+                    description: 'Informations du membre'
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    _id:
+                                        type: string
+                                    firstName:
+                                        type: string
+                                    lastName:
+                                        type: string
+                                    mail:
+                                        type: string
+                                        format: email
+                                    role:
+                                        type: string
+                                        enum: [Member, Manager, Administrator]
+                                    createdAt:
+                                        type: string
+                                        format: date-time
+                '401':
+                    $ref: '#/components/responses/Unauthorized'
+                '403':
+                    $ref: '#/components/responses/Forbidden'
+                '404':
+                    description: 'Membre non trouvé'
