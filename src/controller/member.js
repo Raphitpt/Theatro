@@ -1,0 +1,1 @@
+exports.listAllParticipations = (req, res, next) => {}

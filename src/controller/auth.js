@@ -1,10 +1,9 @@
 require('dotenv').config();
 const Member = require('../models/Member');
+const Manager = require('../models/Manager')
 const bcrypt = require('bcryptjs');
-const { Resend } = require('resend');
 const jwt = require('jsonwebtoken');
-
-const resendInst = new Resend(process.env.RESEND_API_KEY);
+const { sendWelcomeEmail } = require('../services/emailService');
 
 exports.register = (req, res, next) => {
   Member
@@ -13,33 +12,30 @@ exports.register = (req, res, next) => {
       if (user) {
         res.status(400).json({ message: 'Un utilisateur avec cet email existe déjà !' });
       } else {
-        const member = new Member({
+        const memberData = {
           name: req.body.name,
           firstname: req.body.firstname,
           mail: req.body.mail,
           resetPasswordToken: require('crypto').randomBytes(32).toString('hex'),
-        });
+        };
+        const member = req.body.role === 'Manager' ? new Manager(memberData) : new Member(memberData);
         member
           .save()
-          .then(() => {
-            resendInst.emails.send({
-              from: 'onboarding@resend.dev',
-              to: req.body.mail,
-              subject: 'Choisissez votre mot de passe dès maintenant',
-              html: `
-                  <h2>Bienvenue !</h2>
-                  <p>Cliquez sur le lien ci-dessous pour choisir votre mot de passe :</p>
-                  <a href="${process.env.FRONTEND_URL ||
-              'http://localhost:3000'}/choose-password?key=${member.resetPasswordToken}&mail=${encodeURIComponent(
-                req.body.mail)}">
-                    Choisir mon mot de passe
-                  </a>
-                  <p>Ce lien expire dans 1 heure.</p>
-                `,
-            });
-            res.status(201).json({ message: 'L\'utilisateur a été crée et son mail à été envoyé' });
+          .then(async () => {
+            const emailResult = await sendWelcomeEmail(req.body.mail, member.resetPasswordToken);
+
+            if (emailResult.success) {
+              res.status(201).json({ message: 'L\'utilisateur a été créé et son mail a été envoyé' });
+            } else {
+              res.status(201).json({
+                message: 'L\'utilisateur a été créé mais l\'envoi de l\'email a échoué',
+                warning: 'Veuillez réessayer l\'envoi de l\'email'
+              });
+            }
           })
-          .catch((error) => {res.status(500).json({ error });});
+          .catch((error) => {
+            res.status(500).json({ error: error.message });
+          });
       }
     });
 };

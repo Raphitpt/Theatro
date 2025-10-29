@@ -6,7 +6,10 @@ const memberSchema = new mongoose.Schema({
   mail: { type: String, required: true, unique: true },
   password: { type: String },
   resetPasswordToken: { type: String },
-  communicationChannels: [{ type: String, enum: ['MAILS', 'PUSH', 'SMS'] }]
+  communicationChannels: {
+    type: [{ type: String, enum: ['MAILS', 'PUSH', 'SMS'] }],
+    default: ['MAILS']
+  }
 }, { discriminatorKey: 'role', collection: 'members', timestamps: true });
 
 const Member = mongoose.model('Member', memberSchema)

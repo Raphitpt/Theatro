@@ -5,14 +5,17 @@ const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 
 const authRouter = require('./routes/auth');
+const eventRouter = require('./routes/event');
+const showRouter = require('./routes/show');
 const { connect } = require('mongoose');
 
-connect(process.env.MONGO_DB_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+connect(process.env.MONGO_DB_URL)
   .then(() => console.log("Connexion à MongoDB réussie !"))
-  .catch(() => console.log("Connexion à MongoDB échouée !"))
+  .catch((error) => {
+    console.log("Connexion à MongoDB échouée !");
+    console.log("Erreur:", error.message);
+    console.log("URL utilisée:", process.env.MONGO_DB_URL?.substring(0, 30) + "...");
+  })
 
 
 const app = express();
@@ -24,5 +27,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(authRouter);
+app.use(eventRouter);
+app.use(showRouter);
 
 module.exports = app;
