@@ -9,6 +9,7 @@ const eventRouter = require('./routes/event');
 const showRouter = require('./routes/show');
 const workshopRouter = require('./routes/workshop');
 const applicationRouter = require('./routes/application');
+const memberRouter = require('./routes/member')
 const { connect } = require('mongoose');
 
 connect(process.env.MONGO_DB_URL)
@@ -34,5 +35,6 @@ app.use(eventRouter);
 app.use(showRouter);
 app.use(workshopRouter);
 app.use(applicationRouter);
+app.use(memberRouter);
 
 module.exports = app;

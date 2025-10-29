@@ -4,8 +4,8 @@ info:
     version: 1.0.0
     description: ''
 servers:
+    - url: '{{baseUrl}}'
     - url: localhost
-    - url: ''
 paths:
     /login:
         post:
@@ -36,16 +36,11 @@ paths:
             tags:
                 - Auth
             parameters:
-                - name: key
+                - name: deprecated
                   in: query
                   required: false
                   schema:
-                      deprecated: false
-                - name: mail
-                  in: query
-                  required: false
-                  schema:
-                      deprecated: false
+                      type: boolean
             responses: {}
     /event/show:
         post:
@@ -64,7 +59,6 @@ paths:
                                     type: string
                                 dateTimeStart:
                                     type: string
-                                    format: style
                                 dateTimeEnd:
                                     type: string
                                 location:
@@ -82,6 +76,19 @@ paths:
                 - Event
                 - Show
             responses: {}
+    /show/{showId}:
+        get:
+            summary: Get show
+            tags:
+                - Event
+                - Show
+            responses: {}
+        parameters:
+            - name: showId
+              in: path
+              required: true
+              schema:
+                  deprecated: false
     /show/6901ded3a9fc93e47dd0998d/applications:
         get:
             summary: List applications for show
@@ -89,6 +96,87 @@ paths:
                 - Event
                 - Application
             responses: {}
+    /application/{applicationId}/process:
+        patch:
+            summary: Update application of member
+            tags:
+                - Event
+                - Application
+            responses: {}
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                status:
+                                    type: string
+                                notes:
+                                    type: string
+        parameters:
+            - name: applicationId
+              in: path
+              required: true
+              schema:
+                  deprecated: false
+    /event/workshop:
+        post:
+            summary: Create workshop
+            tags:
+                - Event
+                - Workshop
+            responses: {}
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                name:
+                                    type: string
+                                dateTimeStart:
+                                    type: string
+                                    format: style
+                                dateTimeEnd:
+                                    type: string
+                                location:
+                                    type: string
+                                memberMax:
+                                    type: integer
+    /workshop/{workshopId}/apply:
+        post:
+            summary: Apply to workshop
+            tags:
+                - Event
+                - Workshop
+            responses: {}
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                availability:
+                                    type: string
+        parameters:
+            - name: workshopId
+              in: path
+              required: true
+              schema:
+                  deprecated: false
+    /workshop/{workshopId}:
+        get:
+            summary: Get workshop
+            tags:
+                - Event
+                - Workshop
+            responses: {}
+        parameters:
+            - name: workshopId
+              in: path
+              required: true
+              schema:
+                  deprecated: false
     /:
         post:
             summary: Create workshop
@@ -96,3 +184,44 @@ paths:
                 - Event
                 - Workshop
             responses: {}
+    /event:
+        get:
+            summary: Get all events
+            tags:
+                - Event
+            parameters:
+                - name: type
+                  in: query
+                  required: false
+                  schema:
+                      type: string
+            responses: {}
+    /event/{eventType}/{eventId}/followup:
+        get:
+            summary: Follow up event
+            tags:
+                - Event
+            responses: {}
+        parameters:
+            - name: eventType
+              in: path
+              required: true
+              schema:
+                  deprecated: false
+            - name: eventId
+              in: path
+              required: true
+              schema:
+                  deprecated: false
+    /member/{memberId}:
+        get:
+            summary: Get member
+            tags:
+                - Member
+            responses: {}
+        parameters:
+            - name: memberId
+              in: path
+              required: true
+              schema:
+                  deprecated: false
