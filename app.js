@@ -4,6 +4,8 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const cors = require('cors');
+const { rateLimit } = require('express-rate-limit')
+
 
 const authRouter = require('./routes/auth');
 const eventRouter = require('./routes/event');
@@ -11,6 +13,7 @@ const showRouter = require('./routes/show');
 const workshopRouter = require('./routes/workshop');
 const applicationRouter = require('./routes/application');
 const memberRouter = require('./routes/member')
+
 const { connect } = require('mongoose');
 
 connect(process.env.MONGO_DB_URL)
@@ -21,6 +24,14 @@ connect(process.env.MONGO_DB_URL)
     console.log("URL utilisée:", process.env.MONGO_DB_URL?.substring(0, 30) + "...");
   })
 
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 100,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  ipv6Subnet: 56,
+})
 
 const app = express();
 
@@ -35,6 +46,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(limiter);
 
 
 app.use(authRouter);
