@@ -7,5 +7,6 @@ const AuthMiddleware = require('../src/middleware/auth');
 
 router.post('/show/:showId/apply', AuthMiddleware, ShowController.applyToShow);
 router.get('/show/:showId/applications', ManagerMiddleware, ApplicationController.getShowApplications)
+router.get('/show/:showId', ManagerMiddleware, ShowController.getShow)
 
 module.exports = router;

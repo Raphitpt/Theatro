@@ -6,7 +6,7 @@ const AuthMiddleware = require('../src/middleware/auth');
 const ManagerMiddleware = require('../src/middleware/manager');
 
 router.post('/workshop/:workshopId/apply', AuthMiddleware, WorkshopController.applyToWorkshop);
-
 router.get('/workshop/:workshopId/applications', ManagerMiddleware, WorkshopController.getWorkshopApplications);
+router.get('/workshop/:workshopId', ManagerMiddleware, WorkshopController.getWorkshop);
 
 module.exports = router;

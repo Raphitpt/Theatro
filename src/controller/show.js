@@ -4,6 +4,77 @@ const Role = require('../models/Role');
 const Member = require('../models/Member');
 const { sendApplicationConfirmationEmail, sendApplicationStatusEmail } = require('../services/emailService');
 
+exports.getShow = async (req, res, next) => {
+  try {
+    const { showId } = req.params;
+
+    const show = await Show.findById(showId).populate('roles');
+
+    if (!show) {
+      return res.status(404).json({ message: 'Spectacle non trouvé' });
+    }
+
+    const applications = await ShowApplication.find({ show: showId })
+      .populate('member', 'name firstname mail')
+      .populate('role', 'name')
+      .populate('processedBy', 'name firstname');
+
+    const applicationsGroupedByRole = {};
+    show.roles.forEach(role => {
+      applicationsGroupedByRole[role._id] = {
+        role: {
+          id: role._id,
+          name: role.name
+        },
+        applications: [],
+        stats: {
+          total: 0,
+          pending: 0,
+          accepted: 0,
+          refused: 0
+        }
+      };
+    });
+
+    applications.forEach(app => {
+      if (applicationsGroupedByRole[app.role._id]) {
+        applicationsGroupedByRole[app.role._id].applications.push({
+          id: app._id,
+          member: {
+            id: app.member._id,
+            name: `${app.member.firstname} ${app.member.name}`,
+            mail: app.member.mail
+          },
+          status: app.status,
+          appliedAt: app.appliedAt,
+          processedAt: app.processedAt,
+          processedBy: app.processedBy ? `${app.processedBy.firstname} ${app.processedBy.name}` : null,
+          notes: app.notes
+        });
+
+        applicationsGroupedByRole[app.role._id].stats.total++;
+        applicationsGroupedByRole[app.role._id].stats[app.status]++;
+      }
+    });
+
+    res.status(200).json({
+      message: 'Spectacle récupéré avec succès',
+      show: {
+        id: show._id,
+        name: show.name,
+        dateTimeStart: show.dateTimeStart,
+        dateTimeEnd: show.dateTimeEnd,
+        location: show.location,
+        memberMax: show.memberMax,
+        hasFollowUp: show.hasFollowUp,
+        roles: Object.values(applicationsGroupedByRole)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
 exports.applyToShow = async (req, res, next) => {
   try {
     const showId = req.params.showId;

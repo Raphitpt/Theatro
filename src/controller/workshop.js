@@ -3,6 +3,79 @@ const Workshop = require('../models/Workshop');
 const Member = require('../models/Member');
 const { sendApplicationStatusEmail } = require('../services/emailService');
 
+exports.getWorkshop = async (req, res, next) => {
+  try {
+    const { workshopId } = req.params;
+
+    const workshop = await Workshop.findById(workshopId);
+
+    if (!workshop) {
+      return res.status(404).json({ message: 'Atelier non trouvé' });
+    }
+
+    const applications = await WorkshopApplication.find({ workshop: workshopId })
+      .populate('member', 'name firstname mail')
+      .populate('processedBy', 'name firstname');
+
+    const groupedApplications = {
+      available: {
+        applications: [],
+        stats: {
+          total: 0,
+          pending: 0,
+          accepted: 0,
+          refused: 0
+        }
+      },
+      unavailable: {
+        applications: [],
+        stats: {
+          total: 0,
+          pending: 0,
+          accepted: 0,
+          refused: 0
+        }
+      }
+    };
+
+    applications.forEach(app => {
+      const appData = {
+        id: app._id,
+        member: {
+          id: app.member._id,
+          name: `${app.member.firstname} ${app.member.name}`,
+          mail: app.member.mail
+        },
+        status: app.status,
+        respondedAt: app.respondedAt,
+        processedAt: app.processedAt,
+        processedBy: app.processedBy ? `${app.processedBy.firstname} ${app.processedBy.name}` : null,
+        notes: app.notes
+      };
+
+      const availability = app.availability === 'available' ? 'available' : 'unavailable';
+      groupedApplications[availability].applications.push(appData);
+      groupedApplications[availability].stats.total++;
+      groupedApplications[availability].stats[app.status]++;
+    });
+
+    res.status(200).json({
+      message: 'Atelier récupéré avec succès',
+      workshop: {
+        id: workshop._id,
+        name: workshop.name,
+        dateTimeStart: workshop.dateTimeStart,
+        dateTimeEnd: workshop.dateTimeEnd,
+        location: workshop.location,
+        memberMax: workshop.memberMax,
+        hasFollowUp: workshop.hasFollowUp,
+        applications: groupedApplications
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
 
 exports.applyToWorkshop = async (req, res, next) => {
   try {
