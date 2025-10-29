@@ -3,6 +3,7 @@ const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
+const cors = require('cors');
 
 const authRouter = require('./routes/auth');
 const eventRouter = require('./routes/event');
@@ -22,6 +23,12 @@ connect(process.env.MONGO_DB_URL)
 
 
 const app = express();
+
+// Configuration CORS
+app.use(cors({
+  origin: 'http://localhost:5173', // URL du frontend Vite
+  credentials: true
+}));
 
 app.use(logger('dev'));
 app.use(express.json());

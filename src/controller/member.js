@@ -2,6 +2,30 @@ const Member = require('../models/Member');
 const ShowApplication = require('../models/ShowApplication');
 const WorkshopApplication = require('../models/WorkshopApplication');
 
+exports.listAllMembers = async (req, res, next) => {
+  try {
+    const members = await Member.find()
+      .select('_id firstname name mail communicationChannels role')
+      .sort({ firstname: 1, name: 1 });
+
+    res.status(200).json({
+      message: 'Liste des membres récupérée avec succès',
+      count: members.length,
+      members: members.map(member => ({
+        id: member._id,
+        firstname: member.firstname,
+        name: member.name,
+        fullName: `${member.firstname} ${member.name}`,
+        mail: member.mail,
+        role: member.role,
+        communicationChannels: member.communicationChannels
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
 exports.listAllParticipations = async (req, res, next) => {
   try {
     const { memberId } = req.params;
