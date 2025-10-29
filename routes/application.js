@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const ApplicationController = require('../src/controller/show');
-const ManagerMiddleware = require('../src/middleware/auth');
+const ApplicationController = require('../src/controller/application');
+const ManagerMiddleware = require('../src/middleware/manager');
 
-router.post('/show/:showId/apply', ManagerMiddleware, ApplicationController.applyToShow);
+router.post('/application/:applicationId/process', ManagerMiddleware, ApplicationController.processApplication);
 
 module.exports = router;
