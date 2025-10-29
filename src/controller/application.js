@@ -1,4 +1,5 @@
 const ShowApplication = require('../models/ShowApplication');
+const WorkshopApplication = require('../models/WorkshopApplication');
 const Show = require('../models/Show');
 const { sendApplicationStatusEmail } = require('../services/emailService');
 
@@ -12,10 +13,24 @@ exports.processApplication = async (req, res, next) => {
       return res.status(400).json({ message: 'Le statut doit être "accepted" ou "refused"' });
     }
 
-    const application = await ShowApplication.findById(applicationId)
+    let application = await ShowApplication.findById(applicationId)
       .populate('show')
       .populate('member')
       .populate('role');
+
+    let isWorkshop = false;
+    let eventKey = 'show';
+
+    if (!application) {
+      application = await WorkshopApplication.findById(applicationId)
+        .populate('workshop')
+        .populate('member');
+
+      if (application) {
+        isWorkshop = true;
+        eventKey = 'workshop';
+      }
+    }
 
     if (!application) {
       return res.status(404).json({ message: 'La candidature n\'existe pas' });
@@ -25,6 +40,12 @@ exports.processApplication = async (req, res, next) => {
       return res.status(400).json({
         message: `Cette candidature a déjà été traitée (statut: ${application.status})`,
         currentStatus: application.status
+      });
+    }
+
+    if (isWorkshop && status === 'accepted' && application.availability === 'unavailable') {
+      return res.status(400).json({
+        message: 'Vous ne pouvez pas accepter un membre qui a indiqué être non disponible'
       });
     }
 
@@ -38,7 +59,7 @@ exports.processApplication = async (req, res, next) => {
     await application.save();
 
     let autoRefusedCount = 0;
-    if (status === 'accepted') {
+    if (!isWorkshop && status === 'accepted') {
       const otherApplications = await ShowApplication.find({
         show: application.show._id,
         member: application.member._id,
@@ -66,22 +87,25 @@ exports.processApplication = async (req, res, next) => {
       }
     }
 
+    const event = application[eventKey];
     await sendApplicationStatusEmail(application.member.mail, {
       memberName: `${application.member.firstname} ${application.member.name}`,
-      showName: application.show.name,
-      roleName: application.role.name,
-      showDate: application.show.dateTimeStart,
+      showName: event.name,
+      roleName: isWorkshop ? 'Participant' : application.role.name,
+      showDate: event.dateTimeStart,
       status: status,
       notes: notes
     });
 
     res.status(200).json({
-      message: `Candidature ${status === 'accepted' ? 'acceptée' : 'refusée'} avec succès${autoRefusedCount > 0 ? `. ${autoRefusedCount} autre(s) candidature(s) automatiquement refusée(s)` : ''}`,
+      message: `${isWorkshop ? 'Réponse' : 'Candidature'} ${status === 'accepted' ? 'acceptée' : 'refusée'} avec succès${autoRefusedCount > 0 ? `. ${autoRefusedCount} autre(s) candidature(s) automatiquement refusée(s)` : ''}`,
       application: {
         id: application._id,
         member: `${application.member.firstname} ${application.member.name}`,
-        show: application.show.name,
-        role: application.role.name,
+        event: event.name,
+        type: isWorkshop ? 'workshop' : 'show',
+        role: isWorkshop ? 'Participant' : application.role.name,
+        availability: isWorkshop ? application.availability : undefined,
         status: application.status,
         processedAt: application.processedAt,
         notes: application.notes

@@ -1,0 +1,98 @@
+openapi: 3.0.0
+info:
+    title: Theatro
+    version: 1.0.0
+    description: ''
+servers:
+    - url: localhost
+    - url: ''
+paths:
+    /login:
+        post:
+            summary: Login
+            tags:
+                - Auth
+            responses: {}
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                mail:
+                                    type: string
+                                    format: email
+                                password:
+                                    type: string
+    /register:
+        post:
+            summary: Register
+            tags:
+                - Auth
+            responses: {}
+    /choose-password:
+        patch:
+            summary: Choose Password
+            tags:
+                - Auth
+            parameters:
+                - name: key
+                  in: query
+                  required: false
+                  schema:
+                      deprecated: false
+                - name: mail
+                  in: query
+                  required: false
+                  schema:
+                      deprecated: false
+            responses: {}
+    /event/show:
+        post:
+            summary: Create show
+            tags:
+                - Event
+                - Show
+            responses: {}
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                name:
+                                    type: string
+                                dateTimeStart:
+                                    type: string
+                                    format: style
+                                dateTimeEnd:
+                                    type: string
+                                location:
+                                    type: string
+                                memberMax:
+                                    type: integer
+                                roles:
+                                    type: array
+                                    items:
+                                        type: string
+    /show/6901ded3a9fc93e47dd0998d/apply:
+        post:
+            summary: Apply to show
+            tags:
+                - Event
+                - Show
+            responses: {}
+    /show/6901ded3a9fc93e47dd0998d/applications:
+        get:
+            summary: List applications for show
+            tags:
+                - Event
+                - Application
+            responses: {}
+    /:
+        post:
+            summary: Create workshop
+            tags:
+                - Event
+                - Workshop
+            responses: {}

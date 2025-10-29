@@ -4,5 +4,6 @@ const EventController = require('../src/controller/event')
 const ManagerMiddleware = require('../src/middleware/manager')
 
 router.post('/event/show', ManagerMiddleware, EventController.createShow)
+router.post('/event/workshop', ManagerMiddleware, EventController.createWorkshop)
 
 module.exports = router

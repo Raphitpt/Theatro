@@ -7,8 +7,9 @@ const logger = require('morgan');
 const authRouter = require('./routes/auth');
 const eventRouter = require('./routes/event');
 const showRouter = require('./routes/show');
+const workshopRouter = require('./routes/workshop');
+const applicationRouter = require('./routes/application');
 const { connect } = require('mongoose');
-const { specs, swaggerUi } = require('./swagger');
 
 connect(process.env.MONGO_DB_URL)
   .then(() => console.log("Connexion à MongoDB réussie !"))
@@ -27,14 +28,11 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Documentation Swagger
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
-  explorer: true,
-  customCss: '.swagger-ui .topbar { display: none }'
-}));
 
 app.use(authRouter);
 app.use(eventRouter);
 app.use(showRouter);
+app.use(workshopRouter);
+app.use(applicationRouter);
 
 module.exports = app;
